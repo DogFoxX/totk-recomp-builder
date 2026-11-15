@@ -31,11 +31,30 @@ totk-auto-build [-h, --help] [-v, --version] [<folder>]
     to start the automatic rebuild.
 ```
 
-### Full Example
+### Full Examples
+
+#### Windows
 
 ```shell
-totk-auto-build "./game files"
+.\totk-auto-build ".\game files"
 ```
+
+#### Linux
+
+Linux requires the file to be executable:
+
+```shell
+chmod -x totk-auto-build
+```
+
+Then (requires `sudo` to write files):
+
+```shell
+sudo ./totk-auto-build "./game files"
+```
+
+> [!NOTE]
+> In these examples `game files` refer to a folder containing the files needed.
 
 # What it does
 
