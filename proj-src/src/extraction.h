@@ -1,9 +1,9 @@
 #pragma once
 
-#include <atomic>
 #include <filesystem>
-#include <stdexcept>
 #include <string>
+#include <atomic>
+#include <stdexcept>
 
 namespace extraction
 {
@@ -11,14 +11,13 @@ namespace extraction
     {
     public:
         explicit ExtractionError(const std::string& message)
-            : std::runtime_error(message)
-        {
-        }
+            : std::runtime_error(message) {}
     };
 
     void extract_archive(
         const std::filesystem::path& archive_path,
         const std::filesystem::path& destination,
         const std::string& label,
-        const std::atomic<bool>* stop_flag = nullptr);
+        const std::atomic<bool>* stop_flag = nullptr
+    );
 }

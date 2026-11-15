@@ -22,6 +22,7 @@
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -98,158 +99,6 @@ namespace
         std::cout << '\n' << std::flush;
     }
 
-    std::uint16_t read_le_u16(const unsigned char* p) noexcept
-    {
-        return static_cast<std::uint16_t>(p[0]) |
-               (static_cast<std::uint16_t>(p[1]) << 8);
-    }
-
-    std::uint32_t read_le_u32(const unsigned char* p) noexcept
-    {
-        return static_cast<std::uint32_t>(p[0]) |
-               (static_cast<std::uint32_t>(p[1]) << 8) |
-               (static_cast<std::uint32_t>(p[2]) << 16) |
-               (static_cast<std::uint32_t>(p[3]) << 24);
-    }
-
-    std::uint64_t read_le_u64(const unsigned char* p) noexcept
-    {
-        return static_cast<std::uint64_t>(read_le_u32(p)) |
-               (static_cast<std::uint64_t>(read_le_u32(p + 4)) << 32);
-    }
-
-    bool is_valid_squashfs_superblock(
-        const unsigned char* sb,
-        std::uint64_t offset,
-        std::uint64_t file_size) noexcept
-    {
-        // SquashFS 4.0 superblock is 96 bytes starting with "hsqs" (0x73717368).
-        if (read_le_u32(sb + 0) != 0x73717368U)
-            return false;
-
-        const std::uint32_t inode_count = read_le_u32(sb + 4);
-        const std::uint32_t block_size = read_le_u32(sb + 12);
-        const std::uint16_t compression = read_le_u16(sb + 20);
-        const std::uint16_t s_major = read_le_u16(sb + 28);
-        const std::uint16_t s_minor = read_le_u16(sb + 30);
-        const std::uint64_t bytes_used = read_le_u64(sb + 40);
-
-        if (inode_count == 0)
-            return false;
-
-        if (s_major != 4 || s_minor != 0)
-            return false;
-
-        if (block_size < 4096U || block_size > 1048576U ||
-            (block_size & (block_size - 1U)) != 0U)
-            return false;
-
-        if (compression < 1U || compression > 6U)
-            return false;
-
-        if (bytes_used <= 96ULL || offset + bytes_used > file_size)
-            return false;
-
-        return true;
-    }
-
-    std::uint64_t find_squashfs_offset(
-        std::ifstream& file,
-        std::uint64_t file_size)
-    {
-        if (file_size < 160ULL)
-            throw_extraction_error("Extraction failed: AppImage file is too small.");
-
-        file.clear();
-        file.seekg(0, std::ios::beg);
-
-        std::array<unsigned char, 64> elf_hdr{};
-        file.read(reinterpret_cast<char*>(elf_hdr.data()), elf_hdr.size());
-        if (file.gcount() != 64)
-            throw_extraction_error("Extraction failed: Could not read AppImage header.");
-
-        std::uint64_t scan_start = 0;
-
-        // Parse ELF64 section header table end to skip past the AppImage runtime binary.
-        if (elf_hdr[0] == 0x7F && elf_hdr[1] == 'E' &&
-            elf_hdr[2] == 'L' && elf_hdr[3] == 'F' &&
-            elf_hdr[4] == 2 && elf_hdr[5] == 1)
-        {
-            const std::uint64_t e_shoff = read_le_u64(elf_hdr.data() + 40);
-            const std::uint16_t e_shentsize = read_le_u16(elf_hdr.data() + 58);
-            const std::uint16_t e_shnum = read_le_u16(elf_hdr.data() + 60);
-
-            if (e_shoff > 0 && e_shentsize >= 64 && e_shnum > 0)
-            {
-                const std::uint64_t elf_end =
-                    e_shoff + static_cast<std::uint64_t>(e_shentsize) * e_shnum;
-                if (elf_end < file_size)
-                {
-                    scan_start = elf_end;
-                }
-            }
-        }
-
-        // Fast check directly at elf_end first.
-        if (scan_start > 0 && scan_start + 96ULL <= file_size)
-        {
-            std::array<unsigned char, 96> sb{};
-            file.clear();
-            file.seekg(static_cast<std::streamoff>(scan_start), std::ios::beg);
-            file.read(reinterpret_cast<char*>(sb.data()), sb.size());
-            if (file.gcount() == 96 &&
-                is_valid_squashfs_superblock(sb.data(), scan_start, file_size))
-            {
-                return scan_start;
-            }
-        }
-
-        // Fallback scan up to 32 MiB from scan_start for padded/stripped AppImage runtimes.
-        const std::uint64_t max_scan =
-            std::min<std::uint64_t>(file_size, scan_start + 32ULL * 1024ULL * 1024ULL);
-
-        constexpr std::size_t CHUNK_SIZE = 65536;
-        constexpr std::size_t OVERLAP = 96;
-        std::vector<unsigned char> buf(CHUNK_SIZE + OVERLAP);
-
-        std::uint64_t pos = scan_start;
-        while (pos + 96ULL <= max_scan)
-        {
-            const std::size_t to_read = static_cast<std::size_t>(
-                std::min<std::uint64_t>(buf.size(), max_scan - pos));
-
-            file.clear();
-            file.seekg(static_cast<std::streamoff>(pos), std::ios::beg);
-            file.read(reinterpret_cast<char*>(buf.data()), static_cast<std::streamsize>(to_read));
-
-            const std::size_t got = static_cast<std::size_t>(file.gcount());
-            if (got < 96)
-                break;
-
-            const std::size_t limit = got - 96;
-            for (std::size_t i = 0; i <= limit; ++i)
-            {
-                if (buf[i] == 'h' && buf[i + 1] == 's' &&
-                    buf[i + 2] == 'q' && buf[i + 3] == 's')
-                {
-                    const std::uint64_t candidate = pos + i;
-                    if (is_valid_squashfs_superblock(buf.data() + i, candidate, file_size))
-                    {
-                        return candidate;
-                    }
-                }
-            }
-
-            if (got <= OVERLAP)
-                break;
-
-            pos += (got - OVERLAP);
-        }
-
-        throw_extraction_error(
-            "Extraction failed: Could not locate SquashFS payload inside AppImage.");
-    }
-
     struct StreamReader
     {
         std::ifstream file;
@@ -270,7 +119,7 @@ namespace
 
         const std::uint64_t remaining = reader->stream_size - reader->logical_pos;
         const std::size_t to_read = static_cast<std::size_t>(
-            std::min<std::uint64_t>(remaining, reader->buffer.size()));
+            std::min<uint64_t>(remaining, reader->buffer.size()));
 
         reader->file.read(
             reader->buffer.data(),
@@ -528,7 +377,6 @@ namespace
                 "Extraction failed: Could not read staged extraction directory.");
         }
 
-        // Unwrap single top-level wrapper folder (e.g. squashfs-root or release folder).
         fs::path source_root = staging_dir;
         if (top_entries.size() == 1 && top_entries.front().is_directory(ec))
         {
@@ -604,7 +452,49 @@ namespace extraction
         }
 
         StagingDirGuard staging_guard(staging_dir);
+        const std::string lower_name = to_lower_ascii(path_to_utf8(archive_path.filename()));
 
+        // Native AppImage Extraction Handler
+        if (lower_name.ends_with(".appimage"))
+        {
+            std::cout << "\nExtracting " << label << " (AppImage)...\n";
+
+#if defined(_WIN32)
+            throw_extraction_error("AppImages cannot be extracted natively on Windows.");
+#else
+            fs::permissions(
+                archive_path,
+                fs::perms::owner_exec | fs::perms::group_exec | fs::perms::others_exec,
+                fs::perm_options::add,
+                ec);
+
+            const std::string full_cmd = "cd \"" + path_to_utf8(staging_dir) + "\" && \"" + path_to_utf8(archive_path) + "\" --appimage-extract > /dev/null 2>&1";
+            const int ret = std::system(full_cmd.c_str());
+            if (ret != 0)
+            {
+                throw_extraction_error("Extraction failed: AppImage extraction command returned non-zero exit code.");
+            }
+
+            const fs::path squash_root = staging_dir / "squashfs-root";
+            if (fs::exists(squash_root, ec))
+            {
+                for (auto& p : fs::directory_iterator(squash_root))
+                {
+                    fs::rename(p.path(), staging_dir / p.path().filename(), ec);
+                }
+                fs::remove_all(squash_root, ec);
+            }
+#endif
+            promote_staging_contents(staging_dir, destination);
+            ensure_linux_executables(destination);
+            staging_guard.release();
+            fs::remove_all(staging_dir, ec);
+
+            std::cout << "[==================================================][Completed]\n";
+            return;
+        }
+
+        // Standard Streaming libarchive extraction for ZIP, TAR.GZ, etc.
         StreamReader reader;
         reader.file.open(archive_path, std::ios::binary);
         if (!reader.file)
@@ -613,22 +503,11 @@ namespace extraction
                 "Extraction failed: Could not open '" + path_to_utf8(archive_path) + "'.");
         }
 
-        const std::string lower_name =
-            to_lower_ascii(path_to_utf8(archive_path.filename()));
-
-        if (lower_name.ends_with(".appimage"))
-        {
-            reader.base_offset = find_squashfs_offset(reader.file, total_file_size);
-        }
-        else
-        {
-            reader.base_offset = 0;
-        }
-
-        reader.stream_size = total_file_size - reader.base_offset;
+        reader.base_offset = 0;
+        reader.stream_size = total_file_size;
         reader.logical_pos = 0;
         reader.file.clear();
-        reader.file.seekg(static_cast<std::streamoff>(reader.base_offset), std::ios::beg);
+        reader.file.seekg(0, std::ios::beg);
 
         using ArchivePtr = std::unique_ptr<struct archive, decltype(&archive_read_free)>;
         ArchivePtr arc(archive_read_new(), &archive_read_free);
