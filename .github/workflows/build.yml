@@ -27,6 +27,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Fix vcpkg git shallow clone history on Windows
+        shell: pwsh
+        run: |
+          $env:VCPKG_ROOT = $env:VCPKG_INSTALLATION_ROOT
+          if (Test-Path "$env:VCPKG_ROOT\.git") {
+            git -C "$env:VCPKG_ROOT" fetch --unshallow --quiet 2>$null
+            git -C "$env:VCPKG_ROOT" fetch origin 320fc5d9fb666ebb1e76a08e63870e87a2063fe9 --quiet 2>$null
+          }
+
       - name: Cache vcpkg binary packages
         uses: actions/cache@v4
         with:
@@ -104,8 +113,8 @@ jobs:
       - name: Bootstrap vcpkg
         working-directory: ${{ github.workspace }}
         run: |
-          git clone --depth 1 https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT"
-          git -C "$VCPKG_ROOT" fetch --depth 1 origin 320fc5d9fb666ebb1e76a08e63870e87a2063fe9
+          git clone https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT"
+          git -C "$VCPKG_ROOT" checkout 320fc5d9fb666ebb1e76a08e63870e87a2063fe9
           "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
 
       - name: Cache vcpkg binary packages
