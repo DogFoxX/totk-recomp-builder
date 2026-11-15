@@ -1,0 +1,41 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "CMake: Configure",
+      "type": "shell",
+      "command": "cmake",
+      "options": {
+        "cwd": "${workspaceFolder}/proj-src"
+      },
+      "windows": {
+        "args": ["--preset", "windows-x64"]
+      },
+      "linux": {
+        "args": ["--preset", "linux-x64"]
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "CMake: Build",
+      "type": "shell",
+      "command": "cmake",
+      "options": {
+        "cwd": "${workspaceFolder}/proj-src"
+      },
+      "windows": {
+        "args": ["--build", "--preset", "windows-release", "--parallel"],
+        "problemMatcher": ["$msCompile"]
+      },
+      "linux": {
+        "args": ["--build", "--preset", "linux-release", "--parallel"],
+        "problemMatcher": ["$gcc"]
+      },
+      "dependsOn": "CMake: Configure",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+#include <winver.h>
+#pragma code_page(65001)
+
+@APP_ICON_LINE@
+
+VS_VERSION_INFO VERSIONINFO
+    FILEVERSION     @APP_VERSION_MAJOR@,@APP_VERSION_MINOR@,@APP_VERSION_PATCH@,@APP_VERSION_TWEAK@
+    PRODUCTVERSION  @APP_VERSION_MAJOR@,@APP_VERSION_MINOR@,@APP_VERSION_PATCH@,@APP_VERSION_TWEAK@
+    FILEFLAGSMASK   VS_FFI_FILEFLAGSMASK
+#ifdef _DEBUG
+    FILEFLAGS       VS_FF_DEBUG
+#else
+    FILEFLAGS       0x0L
+#endif
+    FILEOS          VOS_NT_WINDOWS32
+    FILETYPE        VFT_APP
+    FILESUBTYPE     VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "FileDescription",  "TOTK PC Recomp Builder"
+            VALUE "FileVersion",      "@APP_VERSION@"
+            VALUE "InternalName",     "totk-auto-build"
+            VALUE "OriginalFilename", "totk-auto-build.exe"
+            VALUE "ProductName",      "TOTK PC Recomp Builder"
+            VALUE "ProductVersion",   "@APP_VERSION@"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1200
+    END
+END

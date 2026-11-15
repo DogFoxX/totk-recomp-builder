@@ -1,0 +1,184 @@
+name: Build TOTK Auto Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version number (e.g. 1.0.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    name: Windows (x64)
+    runs-on: windows-latest
+
+    env:
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}\vcpkg_cache
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Cache vcpkg binary packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+          key: vcpkg-win-x64-${{ hashFiles('vcpkg.json') }}
+
+      - name: Configure CMake (windows-x64 preset)
+        shell: pwsh
+        run: |
+          $env:VCPKG_ROOT = $env:VCPKG_INSTALLATION_ROOT
+          $ver = "${{ inputs.version }}".Trim().TrimStart('v', 'V')
+          New-Item -ItemType Directory -Force -Path "$env:VCPKG_DEFAULT_BINARY_CACHE" | Out-Null
+          cmake --preset windows-x64 -DAPP_VERSION="$ver"
+
+      - name: Build Release executable (windows-release preset)
+        shell: pwsh
+        run: cmake --build --preset windows-release --parallel
+
+      - name: Package Windows zip
+        shell: pwsh
+        run: |
+          $ver = "${{ inputs.version }}".Trim().TrimStart('v', 'V')
+          Compress-Archive `
+            -Path build/Release/totk-auto-build.exe `
+            -DestinationPath "totk-auto-build-$ver-windows.zip" `
+            -Force
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: totk-auto-build-windows
+          path: totk-auto-build-*-windows.zip
+          if-no-files-found: error
+
+  build-linux:
+    name: Linux (x64 portable)
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:22.04
+
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      VCPKG_ROOT: /opt/vcpkg
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg_cache
+
+    steps:
+      - name: Install build tools and vcpkg prerequisites
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            autoconf \
+            automake \
+            build-essential \
+            ca-certificates \
+            cmake \
+            curl \
+            git \
+            libtool \
+            ninja-build \
+            perl \
+            pkg-config \
+            python3 \
+            tar \
+            unzip \
+            zip
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Bootstrap vcpkg
+        run: |
+          git clone --depth 1 https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT"
+          git -C "$VCPKG_ROOT" fetch --depth 1 origin 320fc5d9fb666ebb1e76a08e63870e87a2063fe9
+          "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
+
+      - name: Cache vcpkg binary packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+          key: vcpkg-linux-x64-ubuntu2204-${{ hashFiles('vcpkg.json') }}
+
+      - name: Configure CMake (linux-x64 preset with static vcpkg)
+        run: |
+          VER="$(echo "${{ inputs.version }}" | xargs)"
+          VER="${VER#v}"
+          VER="${VER#V}"
+          mkdir -p "$VCPKG_DEFAULT_BINARY_CACHE"
+          cmake --preset linux-x64 \
+            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+            -DVCPKG_TARGET_TRIPLET=x64-linux \
+            -DAPP_VERSION="$VER"
+
+      - name: Build Release executable (linux-release preset)
+        run: cmake --build --preset linux-release --parallel
+
+      - name: Strip and verify shared library dependencies
+        run: |
+          strip build/totk-auto-build
+          chmod +x build/totk-auto-build
+          ldd build/totk-auto-build
+
+      - name: Package Linux zip
+        run: |
+          VER="$(echo "${{ inputs.version }}" | xargs)"
+          VER="${VER#v}"
+          VER="${VER#V}"
+          zip -j "totk-auto-build-${VER}-linux.zip" build/totk-auto-build
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: totk-auto-build-linux
+          path: totk-auto-build-*-linux.zip
+          if-no-files-found: error
+
+  create-release:
+    name: Create Draft Release
+    needs:
+      - build-windows
+      - build-linux
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download Windows zip
+        uses: actions/download-artifact@v4
+        with:
+          name: totk-auto-build-windows
+          path: dist
+
+      - name: Download Linux zip
+        uses: actions/download-artifact@v4
+        with:
+          name: totk-auto-build-linux
+          path: dist
+
+      - name: Create empty draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VER="$(echo "${{ inputs.version }}" | xargs)"
+          VER="${VER#v}"
+          VER="${VER#V}"
+
+          if [ -z "$VER" ]; then
+            echo "Error: version input is required."
+            exit 1
+          fi
+
+          TAG="v${VER}"
+
+          gh release create "$TAG" \
+            "dist/totk-auto-build-${VER}-windows.zip" \
+            "dist/totk-auto-build-${VER}-linux.zip" \
+            --draft \
+            --target "${{ github.sha }}" \
+            --title "$TAG" \
+            --notes ""

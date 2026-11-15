@@ -1,0 +1,7 @@
+{
+  "cmake.sourceDirectory": "C:/Users/DogFoxX/Projects/totk-recomp-builder/proj-src",
+  "cmake.buildDirectory": "${workspaceFolder}/proj-src/build",
+  "cmake.configureOnOpen": true,
+  "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+  "C_Cpp.default.cppStandard": "c++20"
+}
