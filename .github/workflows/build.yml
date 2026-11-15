@@ -16,6 +16,10 @@ jobs:
     name: Windows (x64)
     runs-on: windows-latest
 
+    defaults:
+      run:
+        working-directory: proj-src
+
     env:
       VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}\vcpkg_cache
 
@@ -27,7 +31,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
-          key: vcpkg-win-x64-${{ hashFiles('vcpkg.json') }}
+          key: vcpkg-win-x64-${{ hashFiles('proj-src/vcpkg.json') }}
 
       - name: Configure CMake (windows-x64 preset)
         shell: pwsh
@@ -54,7 +58,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: totk-auto-build-windows
-          path: totk-auto-build-*-windows.zip
+          path: proj-src/totk-auto-build-*-windows.zip
           if-no-files-found: error
 
   build-linux:
@@ -63,6 +67,10 @@ jobs:
     container:
       image: ubuntu:22.04
 
+    defaults:
+      run:
+        working-directory: proj-src
+
     env:
       DEBIAN_FRONTEND: noninteractive
       VCPKG_ROOT: /opt/vcpkg
@@ -70,6 +78,7 @@ jobs:
 
     steps:
       - name: Install build tools and vcpkg prerequisites
+        working-directory: ${{ github.workspace }}
         run: |
           apt-get update
           apt-get install -y --no-install-recommends \
@@ -93,6 +102,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Bootstrap vcpkg
+        working-directory: ${{ github.workspace }}
         run: |
           git clone --depth 1 https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT"
           git -C "$VCPKG_ROOT" fetch --depth 1 origin 320fc5d9fb666ebb1e76a08e63870e87a2063fe9
@@ -102,7 +112,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
-          key: vcpkg-linux-x64-ubuntu2204-${{ hashFiles('vcpkg.json') }}
+          key: vcpkg-linux-x64-ubuntu2204-${{ hashFiles('proj-src/vcpkg.json') }}
 
       - name: Configure CMake (linux-x64 preset with static vcpkg)
         run: |
@@ -135,7 +145,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: totk-auto-build-linux
-          path: totk-auto-build-*-linux.zip
+          path: proj-src/totk-auto-build-*-linux.zip
           if-no-files-found: error
 
   create-release:
