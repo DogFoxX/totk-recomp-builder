@@ -253,6 +253,7 @@ namespace
             << "  -v, --version\n"
             << "      Display the version number and exit.\n\n"
             << "  <folder>\n"
+            << "      Optional\n\n"
             << "      Folder containing the TOTK base NSP/XCI, update NSP\n"
             << "      and prod.keys.\n\n"
             << "      Optionally contains firmware/ directory\n"
