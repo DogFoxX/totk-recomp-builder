@@ -246,7 +246,11 @@ namespace
         std::cout
             << "TOTK PC Recomp Builder Bootstrap\n\n"
             << "Usage:\n"
-            << "  totk-auto-build [-h, --help] [<folder>]\n\n"
+#if defined(_WIN32)
+            << "  totk-auto-build [-h, --help] [-v --version] [<folder>]\n\n"
+#else
+            << "  ./AutoBuildRun [-h, --help] [-v --version] [<folder>]\n\n"
+#endif
             << "Options:\n"
             << "  -h, --help\n"
             << "      Display this help message and exit.\n\n"
@@ -258,7 +262,12 @@ namespace
             << "      and prod.keys.\n\n"
             << "      Optionally contains firmware/ directory\n"
             << "      holding firmware NCAs.\n\n"
+#if defined(_WIN32)
             << "      Drag and drop the folder onto the executable\n"
+#else
+            << "      Drag and drop the folder onto totk-auto-build.desktop\n"
+            << "      or pass it to ./AutoBuildRun <folder>\n"
+#endif
             << "      to start the automatic rebuild.\n";
     }
 

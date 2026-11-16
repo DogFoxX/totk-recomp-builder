@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.5
+Type=Application
+Name=TOTK Recomp Builder
+GenericName=TOTK PC Recomp Setup
+Comment=Automated Tears of the Kingdom PC recompilation setup tool
+Exec=sh -c "d=\$(dirname \"\${1#file://}\"); shift; exec \"\$d/AutoBuildRun\" \"\$@\"" _ %k %f
+Icon=utilities-terminal
+Terminal=true
+Categories=Game;Utility;
+MimeType=inode/directory;
+StartupNotify=false

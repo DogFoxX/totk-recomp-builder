@@ -136,6 +136,7 @@ target_compile_definitions(totk-auto-build PRIVATE
 
 target_include_directories(totk-auto-build PRIVATE
     "${CMAKE_CURRENT_BINARY_DIR}/generated"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
 
 target_link_libraries(totk-auto-build PRIVATE
@@ -159,8 +160,37 @@ else()
 endif()
 
 if(UNIX AND NOT APPLE)
+    set_target_properties(totk-auto-build PROPERTIES
+        OUTPUT_NAME "AutoBuildRun"
+    )
+
     target_link_options(totk-auto-build PRIVATE
         -static-libgcc
         -static-libstdc++
+    )
+
+    set(DESKTOP_STAGED "${CMAKE_CURRENT_BINARY_DIR}/generated/totk-auto-build.desktop")
+    set(DESKTOP_OUTPUT "$<TARGET_FILE_DIR:totk-auto-build>/totk-auto-build.desktop")
+
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/totk-auto-build.desktop.in"
+        "${DESKTOP_STAGED}"
+        @ONLY
+    )
+
+    file(CHMOD "${DESKTOP_STAGED}"
+        PERMISSIONS
+            OWNER_READ OWNER_WRITE OWNER_EXECUTE
+            GROUP_READ GROUP_EXECUTE
+            WORLD_READ WORLD_EXECUTE
+    )
+
+    add_custom_command(
+        TARGET totk-auto-build POST_BUILD
+        COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+            "${DESKTOP_STAGED}"
+            "${DESKTOP_OUTPUT}"
+        COMMENT "Generating totk-auto-build.desktop"
+        VERBATIM
     )
 endif()
