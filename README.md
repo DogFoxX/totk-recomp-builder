@@ -21,6 +21,8 @@ totk-auto-build [-h, --help] [-v, --version] [<folder>]
     Display the version number and exit.
 
   <folder>
+    Optional
+
     Folder containing the TOTK base NSP/XCI, update NSP
     and prod.keys.
 
@@ -34,8 +36,16 @@ totk-auto-build [-h, --help] [-v, --version] [<folder>]
 ### Full Examples
 
 #### Windows
+- Drag & drop a folder onto `totk-auto-build.exe`
+  - Folder MUST contain Base NSP, Update NSP (1.1.0, 1.2.1 or 1.4.3) and prod.keys.
+  - Provide your own files.
+  - Folder can optionally contain a `firmware` folder holing the firmware NCAs.
+- Double Click - Fetches new version of <ins>valentderah/totk-pc-recomp</ins>, if available
+  - Needs a ready built game
 
+Command Line
 ```shell
+# Optional folder as the first argument
 .\totk-auto-build ".\game files"
 ```
 
@@ -44,17 +54,16 @@ totk-auto-build [-h, --help] [-v, --version] [<folder>]
 Linux requires the file to be executable:
 
 ```shell
+# Make the file executable
 chmod -x totk-auto-build
-```
 
-Then (requires `sudo` to write files):
-
-```shell
+# Run (requires `sudo` to write files)
+# Optional folder as the first argument
 sudo ./totk-auto-build "./game files"
 ```
 
 > [!NOTE]
-> In these examples `game files` refer to a folder containing the files needed.
+> In these examples `"game files"` refer to a folder containing the files needed.
 
 # What it does
 

@@ -93,66 +93,9 @@ This will:
 - Output the standalone executable at `build/Release/totk-auto-build.exe`
 
 ## Linux
+Build the binary to run on your machine.
 
-### Option 1: Portable Static Build (vcpkg)
-
-Recommended for distribution. Builds `libcurl`, OpenSSL, `libarchive`, and `libstdc++` statically into `totk-auto-build` so the binary runs across Ubuntu, Debian, Arch Linux, Fedora, and SteamOS without external shared library dependencies.
-
-> [!TIP]
-> Building inside an **Ubuntu 22.04** container or environment targets `glibc 2.35`, ensuring backward compatibility with older LTS distributions.
-
-#### Prerequisites
-
-```shell
-sudo apt-get update
-sudo apt-get install -y \
-  autoconf \
-  automake \
-  build-essential \
-  ca-certificates \
-  cmake \
-  curl \
-  git \
-  libtool \
-  ninja-build \
-  perl \
-  pkg-config \
-  python3 \
-  tar \
-  unzip \
-  zip
-```
-
-#### Bootstrap `vcpkg`
-
-```shell
-export VCPKG_ROOT="$HOME/vcpkg"
-git clone [https://github.com/microsoft/vcpkg.git](https://github.com/microsoft/vcpkg.git) "$VCPKG_ROOT"
-"$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
-```
-
-#### Build the Project
-
-```shell
-cmake --preset linux-x64 \
-  -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
-  -DVCPKG_TARGET_TRIPLET=x64-linux
-
-cmake --build --preset linux-release --parallel
-strip build/totk-auto-build
-```
-
-This outputs the portable executable at `build/totk-auto-build`. You can verify that no external `libcurl`, `libarchive`, or `libstdc++` shared libraries are required with:
-
-```shell
-ldd build/totk-auto-build
-```
-
-### Option 2: System Packages (Ubuntu / Debian)
-
-Faster for local development if you only need the binary to run on the same machine it was built on.
-
-#### Prerequisites
+### Ubuntu / Debian Prerequisites
 
 ```shell
 sudo apt-get update
@@ -162,14 +105,35 @@ sudo apt-get install -y \
   ninja-build \
   pkg-config \
   python3 \
+  python-tk \
+  fontconfig \
+  libx11-dev \
   libcurl4-openssl-dev \
   libarchive-dev \
   nlohmann-json3-dev
 ```
 
-#### Build the Project
+### Arch Linux Prerequisites
 
 ```shell
+sudo pacman -S --needed \
+  base-devel \
+  cmake \
+  ninja \
+  git \
+  python \
+  tk \
+  fontconfig \
+  libx11 \
+  curl \
+  libarchive \
+  nlohmann-json
+```
+
+### Build the Project
+
+```shell
+cd ./proj-src
 cmake --preset linux-x64
 cmake --build --preset linux-release --parallel
 ```
