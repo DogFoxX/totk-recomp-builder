@@ -40,8 +40,8 @@ totk-auto-build [-h, --help] [-v, --version] [<folder>]
   - Folder MUST contain Base NSP, Update NSP (1.1.0, 1.2.1 or 1.4.3) and prod.keys.
   - Provide your own files.
   - Folder can optionally contain a `firmware` folder holing the firmware NCAs.
-- Double Click - Fetches new version of <ins>valentderah/totk-pc-recomp</ins>, if available
-  - Needs a ready built game
+- Double Click - Fetches new version of <ins>valentderah/totk-pc-recomp</ins>, if available, and rebuilds the game for the update.
+  - Needs a ready-built game
 
 Command Line
 ```shell
@@ -51,15 +51,24 @@ Command Line
 
 #### Linux
 
-Linux requires the file to be executable:
+##### totk-auto-build.desktop
+- Drag & drop a folder onto `totk-auto-build.desktop`
+  - Folder MUST contain Base NSP, Update NSP (1.1.0, 1.2.1 or 1.4.3) and prod.keys.
+  - Provide your own files.
+  - Folder can optionally contain a `firmware` folder holing the firmware NCAs.
+- Double Click - Fetches new version of <ins>valentderah/totk-pc-recomp</ins>, if available, and rebuilds the game for the update.
+  - Needs a ready-built game
 
+##### AutoBuildRun
+
+Run with terminal
 ```shell
 # Make the file executable
-chmod -x totk-auto-build
+chmod -x ./AutoBuildRun
 
 # Run (requires `sudo` to write files)
 # Optional folder as the first argument
-sudo ./totk-auto-build "./game files"
+sudo ./AutoBuildRun "game files"
 ```
 
 > [!NOTE]
