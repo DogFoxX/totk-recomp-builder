@@ -141,16 +141,16 @@ jobs:
 
       - name: Strip and verify shared library dependencies
         run: |
-          strip build/totk-auto-build
-          chmod +x build/totk-auto-build
-          ldd build/totk-auto-build
+          strip build/AutoBuildRun
+          chmod +x build/AutoBuildRun build/totk-auto-build.desktop
+          ldd build/AutoBuildRun
 
       - name: Package Linux zip
         run: |
           VER="$(echo "${{ inputs.version }}" | xargs)"
           VER="${VER#v}"
           VER="${VER#V}"
-          zip -j "totk-auto-build-${VER}-linux.zip" build/totk-auto-build
+          zip -j "totk-auto-build-${VER}-linux.zip" build/AutoBuildRun build/totk-auto-build.desktop
 
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
